@@ -1,0 +1,108 @@
+
+import numpy as np 
+import pandas as pd 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from scipy import stats
+from scipy.stats import randint
+
+from sklearn.model_selection import train_test_split
+from sklearn import preprocessing
+from sklearn.datasets import make_classification
+from sklearn.preprocessing import binarize, LabelEncoder, MinMaxScaler
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
+
+from sklearn import metrics
+from sklearn.metrics import accuracy_score, mean_squared_error, precision_recall_curve
+from sklearn.model_selection import cross_val_score
+
+from sklearn.neural_network import MLPClassifier
+from sklearn.grid_search import RandomizedSearchCV
+
+from sklearn.ensemble import BaggingClassifier, AdaBoostClassifier
+from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.naive_bayes import GaussianNB 
+from mlxtend.classifier import StackingClassifier
+
+
+from subprocess import check_output
+print(check_output(["ls", "../input"]).decode("utf8"))
+
+train_df = pd.read_csv('survey.csv')
+
+
+print(train_df.shape)
+    
+print(train_df.describe())
+    
+print(train_df.info())
+train_df = train_df.drop(['comments'], axis= 1)
+train_df = train_df.drop(['state'], axis= 1)
+train_df = train_df.drop(['Timestamp'], axis= 1)
+
+train_df.isnull().sum().max() 
+train_df.head(5)
+
+defaultInt = 0
+defaultString = 'NaN'
+defaultFloat = 0.0
+
+intFeatures = ['Age']
+stringFeatures = ['Gender', 'Country', 'self_employed', 'family_history', 'treatment', 'work_interfere', 'remote_work', 'tech_company','leave', 'mental_health_consequence',
+                 'phys_health_consequence', 'coworkers', 'supervisor', 'mental_health_interview', 'phys_health_interview',
+                 'mental_vs_physical', 'obs_consequence', 'benefits', 'care_options', 'wellness_program']
+floatFeatures = []
+
+# Clean the NaN's
+for feature in train_df:
+    if feature in intFeatures:
+        train_df[feature] = train_df[feature].fillna(defaultInt)
+    elif feature in stringFeatures:
+        train_df[feature] = train_df[feature].fillna(defaultString)
+    elif feature in floatFeatures:
+        train_df[feature] = train_df[feature].fillna(defaultFloat)
+    else:
+        print('Error: Feature %s not recognized.' % feature)
+train_df.head(5)   
+
+gender = train_df['Gender'].str.lower()
+
+gender = train_df['Gender'].unique()
+
+male_str = ["male", "m", "male-ish", "maile", "mal", "male (cis)", "make", "male ", "man","msle", "mail", "malr","cis man", "Cis Male", "cis male"]
+trans_str = ["trans-female", "something kinda male?", "queer/she/they", "non-binary","nah", "all", "enby", "fluid", "genderqueer", "androgyne", "agender", "male leaning androgynous", "guy (-ish) ^_^", "trans woman", "neuter", "female (trans)", "queer", "ostensibly male, unsure what that really means"]           
+female_str = ["cis female", "f", "female", "woman",  "femake", "female ","cis-female/femme", "female (cis)", "femail"]
+
+for (row, col) in train_df.iterrows():
+
+    if str.lower(col.Gender) in male_str:
+        train_df['Gender'].replace(to_replace=col.Gender, value='male', inplace=True)
+
+    if str.lower(col.Gender) in female_str:
+        train_df['Gender'].replace(to_replace=col.Gender, value='female', inplace=True)
+
+    if str.lower(col.Gender) in trans_str:
+        train_df['Gender'].replace(to_replace=col.Gender, value='trans', inplace=True)
+
+stk_list = ['A little about you', 'p']
+train_df = train_df[~train_df['Gender'].isin(stk_list)]
+
+print(train_df['Gender'].unique())
+train_df['Age'].fillna(train_df['Age'].median(), inplace = True)
+
+s = pd.Series(train_df['Age'])
+s[s<18] = train_df['Age'].median()
+train_df['Age'] = s
+s = pd.Series(train_df['Age'])
+s[s>120] = train_df['Age'].median()
+train_df['Age'] = s
+
+train_df['age_range'] = pd.cut(train_df['Age'], [0,20,30,65,100], labels=["0-20", "21-30", "31-65", "66-100"], include_lowest=True)
+
+train_df['self_employed'] = train_df['self_employed'].replace([defaultString], 'No')
+print(train_df['self_employed'].unique())
